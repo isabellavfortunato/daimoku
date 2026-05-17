@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Daimoku">
+<meta name="theme-color" content="#F2EBDA">
+<title>Contador de Daimoku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #F2EBDA;
+    color: #2C2419;
+    font-family: 'Manrope', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior-y: contain;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    background-image:
+      radial-gradient(circle at 18% 22%, rgba(60, 40, 20, 0.025) 0%, transparent 45%),
+      radial-gradient(circle at 82% 78%, rgba(60, 40, 20, 0.03) 0%, transparent 50%);
+    padding-bottom: 140px;
+    padding-bottom: calc(140px + env(safe-area-inset-bottom));
+  }
+
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #F2EBDA;
+    border-bottom: 1px solid #D6CAB0;
+    padding-top: env(safe-area-inset-top);
+  }
+  .tabs-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    gap: 4px;
+  }
+  .tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 18px 8px 16px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #8A7E63;
+    cursor: pointer;
+    position: relative;
+    transition: color 150ms ease;
+  }
+  .tab.active { color: #2C2419; }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: -1px;
+    height: 2px;
+    background: #2C2419;
+  }
+
+  .subheader {
+    background: #F2EBDA;
+    border-bottom: 1px solid #D6CAB0;
+  }
+  .subheader-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 18px 20px 16px;
+  }
+  .title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 26px;
+    letter-spacing: 0.02em;
+    margin: 0;
+  }
+  .header-actions { display: flex; gap: 4px; }
+  .header-btn {
+    background: none;
+    border: none;
+    color: #8A7E63;
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 6px 4px;
+  }
+  .header-btn:hover { color: #5B3A2A; }
+
+  .count-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .count {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 44px;
+    font-weight: 500;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .count-of {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #8A7E63;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress-track {
+    height: 1px;
+    background: #D6CAB0;
+    position: relative;
+  }
+  .progress-fill {
+    height: 1px;
+    background: #2C2419;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: width 400ms ease;
+  }
+
+  .grid-wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 22px 14px 16px;
+  }
+  .grid {
+    display: grid;
+    gap: 3px;
+  }
+  .circle {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    padding: 0;
+    border-radius: 9999px;
+    background: transparent;
+    border: 1px solid #8A7B5E;
+    cursor: pointer;
+    transition: transform 120ms ease, background-color 150ms ease, border-color 150ms ease;
+  }
+  .circle.checked {
+    background: #1F1B16;
+    border-color: #1F1B16;
+  }
+  .circle:active { transform: scale(0.7); }
+
+  .footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #F2EBDA;
+    border-top: 1px solid #D6CAB0;
+    z-index: 10;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .footer-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 14px 20px 18px;
+  }
+  .actions { display: flex; gap: 10px; }
+
+  .mark-btn {
+    flex: 1;
+    background: #1F1B16;
+    color: #F2EBDA;
+    border: none;
+    padding: 14px 20px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .mark-btn:active { background: #5B3A2A; }
+  .mark-btn:disabled {
+    background: #B8AE9A;
+    cursor: default;
+  }
+
+  .undo-btn {
+    background: transparent;
+    color: #2C2419;
+    border: 1px solid #B8AE9A;
+    padding: 14px 18px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .undo-btn:disabled {
+    color: #B8AE9A;
+    border-color: #D6CAB0;
+    cursor: default;
+  }
+
+  .status {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #8A7E63;
+    min-height: 12px;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 22, 16, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 20px;
+  }
+  .modal-backdrop.active { display: flex; }
+  .modal {
+    background: #F8F2E2;
+    max-width: 380px;
+    width: 100%;
+    padding: 28px 26px 22px;
+    border: 1px solid #D6CAB0;
+    box-shadow: 0 20px 60px rgba(28, 22, 16, 0.2);
+  }
+  .modal h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin: 0 0 10px;
+  }
+  .modal p {
+    margin: 0 0 22px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #5B5141;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .modal-btn {
+    padding: 10px 18px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+  }
+  .modal-btn.cancel { background: transparent; color: #5B5141; }
+  .modal-btn.confirm-red { background: #A04030; color: #F8F2E2; }
+  .modal-btn.confirm-dark { background: #1F1B16; color: #F2EBDA; }
+  .modal-btn.confirm-dark:disabled { background: #B8AE9A; cursor: default; }
+
+  .adjust-input {
+    width: 100%;
+    padding: 12px 14px;
+    margin: 0 0 22px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    color: #2C2419;
+    background: #F2EBDA;
+    border: 1px solid #B8AE9A;
+  }
+  .adjust-input:focus { outline: none; border-color: #2C2419; }
+
+  .install-tip {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 14px 20px;
+    background: rgba(120, 90, 50, 0.08);
+    border-bottom: 1px solid #D6CAB0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #5B5141;
+    display: none;
+  }
+  .install-tip.show { display: block; }
+  .install-tip strong { color: #2C2419; font-weight: 600; }
+  .install-tip-close {
+    background: none;
+    border: none;
+    color: #8A7E63;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 8px 0 0;
+  }
+</style>
+</head>
+<body>
+
+<nav class="tabs">
+  <div class="tabs-inner">
+    <button class="tab active" data-tab="daimoku">Daimoku</button>
+    <button class="tab" data-tab="estudo">Estudo e Leitura</button>
+  </div>
+</nav>
+
+<div class="install-tip" id="installTip">
+  Para usar como um aplicativo, toque no botão de compartilhar do Safari e escolha <strong>adicionar à tela de início</strong>. Assim você abre direto, e a contagem fica salva mesmo se reiniciar o iPhone.
+  <div><button class="install-tip-close" onclick="hideInstallTip()">entendi</button></div>
+</div>
+
+<div class="panel active" id="panel-daimoku" data-total="7500" data-columns="25" data-storage="daimoku-v1" data-title="Contador de Daimoku">
+  <div class="subheader">
+    <div class="subheader-inner">
+      <div class="title-row">
+        <h1 class="title">Contador de Daimoku</h1>
+        <div class="header-actions">
+          <button class="header-btn" data-action="adjust">ajustar</button>
+          <button class="header-btn" data-action="reset">reiniciar</button>
+        </div>
+      </div>
+      <div class="count-row">
+        <span class="count" data-count>0</span>
+        <span class="count-of">de 7.500 · <span data-percent>0,0</span>%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" data-progress style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+  <main class="grid-wrap">
+    <div class="grid" data-grid></div>
+  </main>
+</div>
+
+<div class="panel" id="panel-estudo" data-total="1000" data-columns="20" data-storage="estudo-v1" data-title="Estudo e Leitura">
+  <div class="subheader">
+    <div class="subheader-inner">
+      <div class="title-row">
+        <h1 class="title">Estudo e Leitura</h1>
+        <div class="header-actions">
+          <button class="header-btn" data-action="adjust">ajustar</button>
+          <button class="header-btn" data-action="reset">reiniciar</button>
+        </div>
+      </div>
+      <div class="count-row">
+        <span class="count" data-count>0</span>
+        <span class="count-of">de 1.000 · <span data-percent>0,0</span>%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" data-progress style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+  <main class="grid-wrap">
+    <div class="grid" data-grid></div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="actions">
+      <button class="undo-btn" id="undoBtn" disabled>desfazer</button>
+      <button class="mark-btn" id="markBtn">marcar próximo</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+</footer>
+
+<div class="modal-backdrop" id="resetModal">
+  <div class="modal">
+    <h2>Reiniciar a contagem?</h2>
+    <p id="resetMsg"></p>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeModal('resetModal')">cancelar</button>
+      <button class="modal-btn confirm-red" onclick="confirmReset()">reiniciar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="adjustModal">
+  <div class="modal">
+    <h2>Ajustar contagem</h2>
+    <p>Digite o número correto de círculos marcados. Os primeiros círculos serão preenchidos até esse total.</p>
+    <input type="number" inputmode="numeric" min="0" class="adjust-input" id="adjustInput" placeholder="0">
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeModal('adjustModal')">cancelar</button>
+      <button class="modal-btn confirm-dark" onclick="confirmAdjust()">aplicar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// estado global de cada aba
+const state = {};
+
+function loadState(storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return new Set();
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) return new Set(data);
+    return new Set();
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function saveState(storageKey, set) {
+  try {
+    const arr = Array.from(set);
+    localStorage.setItem(storageKey, JSON.stringify(arr));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function getActivePanel() {
+  return document.querySelector('.panel.active');
+}
+
+function getActiveConfig() {
+  const panel = getActivePanel();
+  return {
+    panel,
+    id: panel.id.replace('panel-', ''),
+    total: parseInt(panel.dataset.total, 10),
+    columns: parseInt(panel.dataset.columns, 10),
+    storageKey: panel.dataset.storage,
+    title: panel.dataset.title,
+  };
+}
+
+function renderGrid(panel) {
+  const grid = panel.querySelector('[data-grid]');
+  const total = parseInt(panel.dataset.total, 10);
+  const columns = parseInt(panel.dataset.columns, 10);
+  const storageKey = panel.dataset.storage;
+  grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+
+  // monta string única em memória para performance
+  const set = state[storageKey];
+  let html = '';
+  for (let i = 0; i < total; i++) {
+    html += `<button class="circle${set.has(i) ? ' checked' : ''}" data-index="${i}"></button>`;
+  }
+  grid.innerHTML = html;
+}
+
+function updateHeader(panel) {
+  const total = parseInt(panel.dataset.total, 10);
+  const storageKey = panel.dataset.storage;
+  const set = state[storageKey];
+  const count = set.size;
+  const percent = (count / total) * 100;
+  panel.querySelector('[data-count]').textContent = count.toLocaleString('pt-BR');
+  panel.querySelector('[data-percent]').textContent = percent.toFixed(1).replace('.', ',');
+  panel.querySelector('[data-progress]').style.width = percent + '%';
+
+  if (panel.classList.contains('active')) {
+    document.getElementById('undoBtn').disabled = count === 0;
+    const markBtn = document.getElementById('markBtn');
+    markBtn.disabled = count >= total;
+    markBtn.textContent = count >= total ? 'concluído' : 'marcar próximo';
+  }
+}
+
+function flashStatus(msg) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  clearTimeout(flashStatus._t);
+  flashStatus._t = setTimeout(() => {
+    if (el.textContent === msg) el.textContent = '';
+  }, 1500);
+}
+
+function toggleCircle(index) {
+  const { panel, storageKey } = getActiveConfig();
+  const set = state[storageKey];
+  if (set.has(index)) set.delete(index);
+  else set.add(index);
+
+  // atualiza só o círculo afetado
+  const btn = panel.querySelector(`[data-index="${index}"]`);
+  if (btn) btn.classList.toggle('checked', set.has(index));
+
+  updateHeader(panel);
+  const ok = saveState(storageKey, set);
+  flashStatus(ok ? 'salvo' : 'erro ao salvar');
+}
+
+function markNext() {
+  const { panel, total, storageKey } = getActiveConfig();
+  const set = state[storageKey];
+  for (let i = 0; i < total; i++) {
+    if (!set.has(i)) {
+      set.add(i);
+      const btn = panel.querySelector(`[data-index="${i}"]`);
+      if (btn) {
+        btn.classList.add('checked');
+        const rect = btn.getBoundingClientRect();
+        const vh = window.innerHeight;
+        if (rect.top < 180 || rect.bottom > vh - 120) {
+          btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+      updateHeader(panel);
+      const ok = saveState(storageKey, set);
+      flashStatus(ok ? 'salvo' : 'erro ao salvar');
+      return;
+    }
+  }
+}
+
+function undoLast() {
+  const { panel, storageKey } = getActiveConfig();
+  const set = state[storageKey];
+  if (set.size === 0) return;
+  let last = -1;
+  for (const i of set) if (i > last) last = i;
+  if (last < 0) return;
+  set.delete(last);
+  const btn = panel.querySelector(`[data-index="${last}"]`);
+  if (btn) btn.classList.remove('checked');
+  updateHeader(panel);
+  const ok = saveState(storageKey, set);
+  flashStatus(ok ? 'salvo' : 'erro ao salvar');
+}
+
+function openResetModal() {
+  const { storageKey } = getActiveConfig();
+  const count = state[storageKey].size;
+  document.getElementById('resetMsg').textContent =
+    `Todos os ${count.toLocaleString('pt-BR')} círculos marcados desta aba voltarão para o estado inicial. Esta ação não pode ser desfeita.`;
+  document.getElementById('resetModal').classList.add('active');
+}
+
+function confirmReset() {
+  const { panel, storageKey } = getActiveConfig();
+  state[storageKey] = new Set();
+  renderGrid(panel);
+  updateHeader(panel);
+  saveState(storageKey, state[storageKey]);
+  closeModal('resetModal');
+  flashStatus('salvo');
+}
+
+function openAdjustModal() {
+  const { storageKey } = getActiveConfig();
+  document.getElementById('adjustInput').value = state[storageKey].size;
+  document.getElementById('adjustModal').classList.add('active');
+  setTimeout(() => document.getElementById('adjustInput').focus(), 50);
+}
+
+function confirmAdjust() {
+  const { panel, total, storageKey } = getActiveConfig();
+  const v = parseInt(document.getElementById('adjustInput').value, 10);
+  if (isNaN(v) || v < 0 || v > total) return;
+  const set = new Set();
+  for (let i = 0; i < v; i++) set.add(i);
+  state[storageKey] = set;
+  renderGrid(panel);
+  updateHeader(panel);
+  saveState(storageKey, set);
+  closeModal('adjustModal');
+  flashStatus('salvo');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'panel-' + tabId);
+  });
+  // atualiza botões do rodapé para a aba ativa
+  const panel = getActivePanel();
+  updateHeader(panel);
+  // salva a aba ativa
+  try { localStorage.setItem('active-tab', tabId); } catch (e) {}
+}
+
+function hideInstallTip() {
+  document.getElementById('installTip').classList.remove('show');
+  try { localStorage.setItem('install-tip-dismissed', '1'); } catch (e) {}
+}
+
+function maybeShowInstallTip() {
+  // mostra a dica de instalação no iOS Safari fora do modo standalone
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('install-tip-dismissed') === '1'; } catch (e) {}
+  if (isIOS && !isStandalone && !dismissed) {
+    document.getElementById('installTip').classList.add('show');
+  }
+}
+
+// inicialização
+document.addEventListener('DOMContentLoaded', () => {
+  // carrega estado de cada aba
+  document.querySelectorAll('.panel').forEach(panel => {
+    const key = panel.dataset.storage;
+    state[key] = loadState(key);
+    renderGrid(panel);
+    updateHeader(panel);
+  });
+
+  // restaura aba ativa
+  let savedTab = 'daimoku';
+  try {
+    const t = localStorage.getItem('active-tab');
+    if (t === 'daimoku' || t === 'estudo') savedTab = t;
+  } catch (e) {}
+  switchTab(savedTab);
+
+  // listeners das abas
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => switchTab(t.dataset.tab));
+  });
+
+  // delegação de clique nos círculos (para performance com 7.500 botões)
+  document.querySelectorAll('[data-grid]').forEach(grid => {
+    grid.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-index]');
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.index, 10);
+      if (!isNaN(idx)) toggleCircle(idx);
+    });
+  });
+
+  // botões do rodapé
+  document.getElementById('markBtn').addEventListener('click', markNext);
+  document.getElementById('undoBtn').addEventListener('click', undoLast);
+
+  // ações do cabeçalho (delegação em cada painel)
+  document.querySelectorAll('.panel').forEach(panel => {
+    panel.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.action === 'reset') openResetModal();
+        if (btn.dataset.action === 'adjust') openAdjustModal();
+      });
+    });
+  });
+
+  // fechar modais clicando no fundo
+  document.querySelectorAll('.modal-backdrop').forEach(b => {
+    b.addEventListener('click', (e) => {
+      if (e.target === b) b.classList.remove('active');
+    });
+  });
+
+  maybeShowInstallTip();
+});
+</script>
+</body>
+</html>
