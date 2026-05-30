@@ -954,6 +954,7 @@ function getActiveConfig() {
 
 function renderGrid(panel) {
   const grid = panel.querySelector('[data-grid]');
+  if (!grid) return;
   const total = parseInt(panel.dataset.total, 10);
   const columns = parseInt(panel.dataset.columns, 10);
   const storageKey = panel.dataset.storage;
@@ -967,6 +968,7 @@ function renderGrid(panel) {
 }
 
 function updateHeader(panel) {
+  if (!panel || !panel.dataset.storage) return;
   const total = parseInt(panel.dataset.total, 10);
   const storageKey = panel.dataset.storage;
   const labelBase = panel.dataset.labelBase;
@@ -1536,6 +1538,7 @@ function init() {
   seedInitialDays('daimoku-v1', initialDaimokuDays);
 
   document.querySelectorAll('.panel').forEach(panel => {
+    if (!panel.dataset.storage) return;
     state[panel.dataset.storage] = loadLocal(panel.dataset.storage);
     renderGrid(panel);
     updateHeader(panel);
