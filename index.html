@@ -2425,6 +2425,82 @@ const Timer = {
   beepsMarked: new Set(),
 };
 
+// ===== Avisos sonoros (bip e gongo) via Web Audio =====
+// No iPhone, um <audio> só toca fora de um toque se tiver sido liberado com som
+// durante um toque, e o truque de liberar em modo mudo não é confiável.
+// O Web Audio, uma vez ativado em um toque, toca qualquer som depois.
+const SoundFX = { ctx: null, buffers: {}, loading: null };
+
+function getAudioCtx() {
+  if (!SoundFX.ctx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { SoundFX.ctx = new AC(); } catch (e) { return null; }
+  }
+  return SoundFX.ctx;
+}
+
+function decodeBuffer(ctx, arrayBuf) {
+  return new Promise((resolve, reject) => {
+    try {
+      const p = ctx.decodeAudioData(arrayBuf, resolve, reject);
+      if (p && p.then) p.then(resolve, reject);
+    } catch (e) { reject(e); }
+  });
+}
+
+function loadSoundBuffers() {
+  if (SoundFX.loading) return SoundFX.loading;
+  const ctx = getAudioCtx();
+  if (!ctx) return Promise.resolve();
+  const files = { beep: 'beep.mp3', gong: 'gongo.mp3' };
+  SoundFX.loading = Promise.all(Object.keys(files).map(name =>
+    fetch(files[name])
+      .then(r => { if (!r.ok) throw new Error('falha ao baixar ' + files[name]); return r.arrayBuffer(); })
+      .then(buf => decodeBuffer(ctx, buf))
+      .then(decoded => { SoundFX.buffers[name] = decoded; })
+      .catch(err => { console.error(err); })
+  ));
+  return SoundFX.loading;
+}
+
+// precisa ser chamada dentro de um toque (iniciar, continuar, personalizar)
+function unlockAudio() {
+  try {
+    // faz o som tocar mesmo com o iPhone no modo silencioso (Safari mais recente)
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+  } catch (e) {}
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  try {
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    // toca um som vazio para liberar o áudio no iPhone
+    const b = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = b;
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch (e) {}
+  loadSoundBuffers();
+}
+
+// devolve true se conseguiu tocar pelo Web Audio
+function playBuffer(name) {
+  const ctx = SoundFX.ctx;
+  const buf = SoundFX.buffers[name];
+  if (!ctx || !buf) return false;
+  try {
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function formatTimer(ms) {
   if (ms < 0) ms = 0;
   const totalSec = Math.ceil(ms / 1000);
@@ -2441,10 +2517,15 @@ function formatClockTime(date) {
 
 function playBeep() {
   try {
+    // reduz volume do mantra temporariamente para o bip ter destaque
+    // (no iPhone o Safari ignora essa redução de volume)
+    const mantraVolumes = duckMantra(0.15);
+    if (playBuffer('beep')) {
+      setTimeout(() => restoreMantra(mantraVolumes), 700);
+      return;
+    }
     const audioEl = document.getElementById('beepAudio');
     if (!audioEl) return;
-    // reduz volume do mantra temporariamente para o bip ter destaque
-    const mantraVolumes = duckMantra(0.15);
     audioEl.currentTime = 0;
     audioEl.volume = 1.0;
     audioEl.muted = false;
@@ -2496,13 +2577,14 @@ function updateTimerDisplay() {
     if (Timer.state === 'running') {
       if (!Timer.beepsMarked) Timer.beepsMarked = new Set();
       const elapsedMs = Timer.totalMs - remainingMs;
-      const elapsedMinutes = Math.floor(elapsedMs / 60000);
+      // quantos blocos de 5 minutos já se completaram
+      const block = Math.floor(elapsedMs / 300000);
       // se cruzou uma marca de 5 min que ainda não tocou e não é o final
-      if (elapsedMinutes > 0 && elapsedMinutes % 5 === 0 &&
-          elapsedMs < Timer.totalMs - 30000 &&
-          !Timer.beepsMarked.has(elapsedMinutes)) {
-        Timer.beepsMarked.add(elapsedMinutes);
-        playBeep();
+      if (block > 0 && !Timer.beepsMarked.has(block) &&
+          elapsedMs < Timer.totalMs - 30000) {
+        for (let k = 1; k <= block; k++) Timer.beepsMarked.add(k);
+        // só toca se ainda estiver perto da marca (evita bip fora de hora)
+        if (elapsedMs - block * 300000 < 60000) playBeep();
       }
     }
 
@@ -2558,13 +2640,14 @@ function ensureAudioCtx() {
 
 function playGong() {
   try {
-    const audioEl = document.getElementById('gongoAudio');
-    if (!audioEl) return;
     // silencia o mantra para o gongo ter destaque total
     ['mantraAudio', 'mantraAudio2'].forEach(id => {
       const el = document.getElementById(id);
       if (el) try { el.volume = 0; } catch (e) {}
     });
+    if (playBuffer('gong')) return;
+    const audioEl = document.getElementById('gongoAudio');
+    if (!audioEl) return;
     // garante que toca do início mesmo se já tocou antes
     audioEl.currentTime = 0;
     audioEl.volume = 1.0;
@@ -2608,6 +2691,7 @@ function startTimer(minutes) {
 
 function startTimerMs(totalMs) {
   if (!totalMs || totalMs <= 0) return;
+  unlockAudio();
   Timer.totalMs = totalMs;
   Timer.remainingMs = Timer.totalMs;
   Timer.endTime = Date.now() + Timer.totalMs;
@@ -2797,6 +2881,7 @@ function pauseTimer() {
 
 function resumeTimer() {
   if (Timer.state !== 'paused') return;
+  unlockAudio();
   Timer.endTime = Date.now() + Timer.remainingMs;
   Timer.state = 'running';
   document.getElementById('timerPauseBtn').textContent = 'pausar';
@@ -2944,7 +3029,20 @@ function setupTimer() {
     if (document.visibilityState === 'visible' && Timer.state === 'running') {
       requestWakeLock();
     }
+    if (document.visibilityState === 'visible' && SoundFX.ctx && SoundFX.ctx.state !== 'running') {
+      SoundFX.ctx.resume().catch(() => {});
+    }
   });
+
+  // qualquer toque na tela reativa o áudio caso o iPhone o tenha suspendido
+  document.addEventListener('touchend', () => {
+    if (SoundFX.ctx && SoundFX.ctx.state !== 'running' && Timer.state !== 'idle') {
+      SoundFX.ctx.resume().catch(() => {});
+    }
+  }, { passive: true });
+
+  // já baixa o bip e o gongo ao abrir o aplicativo
+  loadSoundBuffers();
 }
 
 function init() {
