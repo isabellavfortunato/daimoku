@@ -1291,13 +1291,6 @@
   <div class="timer-container">
     <div class="timer-display" id="timerDisplay">00:00</div>
     <div class="timer-clock" id="timerClock">&nbsp;</div>
-    <div class="timer-mantra-row">
-      <label class="mantra-switch">
-        <input type="checkbox" id="mantraToggle">
-        <span class="mantra-slider"></span>
-        <span class="mantra-toggle-label">tocar mantra durante o timer</span>
-      </label>
-    </div>
     <div class="timer-options" id="timerOptions">
       <button class="timer-option" data-minutes="5">5 minutos</button>
       <button class="timer-option" data-minutes="10">10 minutos</button>
@@ -2705,9 +2698,8 @@ function startTimerMs(totalMs) {
   Timer.showElapsed = showElapsedPref;
   Timer.beepsMarked = new Set();
 
-  // verifica se o mantra está ligado antes do unlock
-  const mantraToggle = document.getElementById('mantraToggle');
-  const mantraEnabled = mantraToggle && mantraToggle.checked;
+  // o mantra toca sempre que o timer começa
+  const mantraEnabled = true;
 
   // destrava cada áudio individualmente durante o gesto do usuário.
   // no iOS Safari, cada elemento <audio> precisa receber um play() pelo menos
@@ -2821,8 +2813,6 @@ function setupMantraLoop() {
 }
 
 function startMantraIfEnabled() {
-  const toggle = document.getElementById('mantraToggle');
-  if (!toggle || !toggle.checked) return;
   const el1 = document.getElementById('mantraAudio');
   if (!el1) return;
   try {
@@ -2844,8 +2834,6 @@ function pauseMantra() {
 }
 
 function resumeMantraIfEnabled() {
-  const toggle = document.getElementById('mantraToggle');
-  if (!toggle || !toggle.checked) return;
   const el = document.getElementById(mantraActiveEl === 1 ? 'mantraAudio' : 'mantraAudio2');
   if (!el) return;
   try {
@@ -2996,19 +2984,6 @@ function setupTimer() {
 
   // clicar no display alterna entre tempo restante e tempo decorrido
   document.getElementById('timerDisplay').addEventListener('click', toggleTimerDisplay);
-
-  // toggle do mantra: carrega preferência e salva mudanças
-  const mantraToggle = document.getElementById('mantraToggle');
-  if (mantraToggle) {
-    try {
-      mantraToggle.checked = localStorage.getItem('mantra-enabled') === 'true';
-    } catch (e) {}
-    mantraToggle.addEventListener('change', (e) => {
-      try {
-        localStorage.setItem('mantra-enabled', e.target.checked ? 'true' : 'false');
-      } catch (err) {}
-    });
-  }
 
   document.getElementById('timerPauseBtn').addEventListener('click', () => {
     if (Timer.state === 'running') pauseTimer();
