@@ -496,6 +496,48 @@
     color: #8A7E63;
   }
 
+  .mantra-speed-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+    margin-bottom: 8px;
+  }
+  .mantra-speed-label {
+    font-family: 'Manrope', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #8A7E63;
+    font-weight: 500;
+  }
+  .mantra-speed-buttons {
+    display: inline-flex;
+    gap: 8px;
+  }
+  .mantra-speed-btn {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: #2C2419;
+    background: transparent;
+    border: 1px solid #B8AE9A;
+    border-radius: 999px;
+    padding: 6px 18px;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mantra-speed-btn:hover {
+    background: rgba(184, 174, 154, 0.2);
+  }
+  .mantra-speed-btn.active {
+    background: #2C2419;
+    border-color: #2C2419;
+    color: #F2EBDA;
+  }
+
   .timer-options {
     display: flex;
     flex-direction: column;
@@ -1138,6 +1180,19 @@
   body.dark .mantra-switch input:checked + .mantra-slider { background: #E6DED4; }
   body.dark .mantra-switch input:checked + .mantra-slider::before { background: #000; }
   body.dark .mantra-toggle-label { color: #8B847C; }
+  body.dark .mantra-speed-label { color: #8B847C; }
+  body.dark .mantra-speed-btn {
+    color: #E6DED4;
+    border-color: #4A4640;
+  }
+  body.dark .mantra-speed-btn:hover {
+    background: rgba(230, 222, 212, 0.08);
+  }
+  body.dark .mantra-speed-btn.active {
+    background: #E6DED4;
+    border-color: #E6DED4;
+    color: #000;
+  }
   body.dark .timer-clock { color: #8B847C; }
   body.dark .timer-option {
     background: transparent;
@@ -1298,6 +1353,14 @@
       <button class="timer-option" data-minutes="30">30 minutos</button>
       <button class="timer-option" data-minutes="60">60 minutos</button>
       <button class="timer-option timer-option-custom" id="timerCustomBtn">personalizar</button>
+    </div>
+    <div class="mantra-speed-row" id="mantraSpeedRow">
+      <span class="mantra-speed-label">velocidade do mantra</span>
+      <div class="mantra-speed-buttons">
+        <button class="mantra-speed-btn" data-speed="1">1x</button>
+        <button class="mantra-speed-btn" data-speed="1.5">1,5x</button>
+        <button class="mantra-speed-btn" data-speed="2">2x</button>
+      </div>
     </div>
     <div class="timer-controls" id="timerControls" style="display: none;">
       <button class="timer-secondary-btn" id="timerStopBtn">parar</button>
@@ -2812,6 +2875,35 @@ function setupMantraLoop() {
   el2.addEventListener('timeupdate', mantraLoopHandler2);
 }
 
+// === Velocidade do mantra ===
+function getMantraSpeed() {
+  try {
+    const v = parseFloat(localStorage.getItem('mantra-speed'));
+    if (v === 1 || v === 1.5 || v === 2) return v;
+  } catch (e) {}
+  return 1;
+}
+
+function applyMantraSpeed(speed) {
+  ['mantraAudio', 'mantraAudio2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) try { el.playbackRate = speed; } catch (e) {}
+  });
+}
+
+function setMantraSpeed(speed) {
+  try { localStorage.setItem('mantra-speed', String(speed)); } catch (e) {}
+  applyMantraSpeed(speed);
+  updateMantraSpeedButtons(speed);
+}
+
+function updateMantraSpeedButtons(speed) {
+  document.querySelectorAll('.mantra-speed-btn').forEach(btn => {
+    const s = parseFloat(btn.dataset.speed);
+    btn.classList.toggle('active', s === speed);
+  });
+}
+
 function startMantraIfEnabled() {
   const el1 = document.getElementById('mantraAudio');
   if (!el1) return;
@@ -2821,6 +2913,7 @@ function startMantraIfEnabled() {
     el1.currentTime = 0;
     el1.volume = 0.55;
     el1.muted = false;
+    applyMantraSpeed(getMantraSpeed());
     const p = el1.play();
     if (p && p.catch) p.catch(() => {});
   } catch (e) {}
@@ -2981,6 +3074,15 @@ function setupTimer() {
       if (!isNaN(minutes)) startTimer(minutes);
     });
   });
+
+  // botões de velocidade do mantra
+  document.querySelectorAll('.mantra-speed-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const speed = parseFloat(btn.dataset.speed);
+      if (!isNaN(speed)) setMantraSpeed(speed);
+    });
+  });
+  updateMantraSpeedButtons(getMantraSpeed());
 
   // clicar no display alterna entre tempo restante e tempo decorrido
   document.getElementById('timerDisplay').addEventListener('click', toggleTimerDisplay);
